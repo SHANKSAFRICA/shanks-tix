@@ -1,0 +1,1290 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/**
+ * =========================
+ * ENUMS
+ * =========================
+ */
+enum RefundPolicy {
+  ALLOW
+  DISALLOW
+}
+
+enum EventVisibility {
+  PUBLIC
+  PRIVATE
+  DRAFT
+}
+
+enum CoHostRole {
+  FULL_ACCESS
+  MANAGE_TICKETS
+  VIEW_ONLY
+}
+
+enum EventCategory {
+  ARTS_AND_CULTURE
+  AI_AND_TECHNOLOGY
+  FOOD_AND_DRINKS
+  SPORTS_AND_FITNESS
+  MUSIC_AND_CONCERTS
+  HEALTH_AND_WELLNESS
+}
+
+enum EventType {
+  PHYSICAL
+  VIRTUAL
+  HYBRID
+}
+
+enum VirtualProvider {
+  ZOOM
+  GOOGLE_MEET
+  MICROSOFT_TEAMS
+  CUSTOM
+}
+
+enum Role {
+  ATTENDEE
+  ORGANIZER
+  ADMIN
+  COHOST
+  FINANCE
+  SUPPORT
+}
+
+enum GateStaffStatus {
+  ACTIVE
+  PENDING
+  REVOKED
+}
+
+enum OrderStatus {
+  PENDING 
+  COMPLETED
+  FAILED
+  ABANDONED
+}
+
+
+enum TicketStatus {
+  ACTIVE
+  CANCELLED
+  USED
+}
+
+/**
+ * =========================
+ * ENUMS FOR WALLET
+ * =========================
+ */
+enum WalletTransactionType {
+  REFUND
+  WITHDRAWAL
+}
+
+enum WalletTransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum TransactionType {
+  TICKET_SALE
+  WITHDRAWAL
+  REFUND
+  DISPUTE_REVERSAL
+  PLATFORM_FEE
+  CAMPAIGN_PAYMENT
+  // A manual credit/debit applied by an admin from the dashboard. Previously these were
+  // recorded as REFUND with an ADMIN_ADJUST_ reference, which made a top-up read as a refund
+  // in transaction history and left it indistinguishable from a real one.
+  ADMIN_ADJUSTMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REVERSED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum EventReminderType {
+  TWO_WEEKS
+  ONE_WEEK
+  ONE_DAY
+  DAY_OF
+  ONE_HOUR
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+enum SharePlatform {
+  WHATSAPP
+  TWITTER
+  FACEBOOK
+  LINK_COPY
+  INSTAGRAM
+  TELEGRAM
+}
+
+// ENUMS FOR CAMPAIGNS
+
+enum CampaignChannel {
+  SMS
+  WHATSAPP
+  EMAIL
+}
+
+enum CampaignStatus {
+  AWAITING_PAYMENT
+  SENDING
+  SENT
+  FAILED
+  SUSPENDED
+}
+
+enum CampaignPaymentMethod {
+  WALLET
+  KLUMP
+  PAYSTACK
+}
+
+enum CampaignPaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum DeliveryStatus {
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum ActivityType {
+  TICKET_PURCHASE
+  EVENT_SAVED
+  TICKET_CHECKIN
+  EVENT_REMINDER
+  WALLET_TRANSACTION
+  WITHDRAWAL
+  DISPUTE
+  CAMPAIGN
+  NEW_USER
+  NEW_EVENT
+}
+
+/**
+ * =========================
+ * MODELS
+ * =========================
+ */
+ 
+model User {
+  id                       String    @id @default(uuid())
+  name                     String
+  email                    String    @unique
+  password                 String?
+  image                    String?
+  phoneNumber              String?   @unique
+  phoneVerified            Boolean   @default(false)
+  phoneVerificationCode    String?
+  phoneVerificationExpires DateTime?
+  bio                      String?
+  country                  String?
+  state                    String?
+  city                     String?
+  role                     Role    @default(ATTENDEE)
+  isVerified               Boolean @default(false)
+  pendingEmail             String?
+  emailChangeCode          String?       
+  codeExpiresAt            DateTime?
+  provider                 String?
+  googleId                 String? @unique
+  verificationCode         String?
+  verificationCodeExpires  DateTime?
+  resetToken               String?   @unique
+  resetTokenExpiry         DateTime?
+  twoFactorEnabled         Boolean   @default(false)
+  twoFactorCode            String?
+  twoFactorCodeExpires     DateTime?
+  ninHash             String?  @unique  
+  ninVerified         Boolean  @default(false)
+  ninVerifiedAt       DateTime?
+  ninVerificationReference String?
+  ninVerificationData Json?
+  ninVerificationAttempts  Int       @default(0)
+  ninLastAttemptAt         DateTime?
+  ninLockedUntil           DateTime?
+  ninDayOneFailedAt        DateTime?
+  suspendedAt              DateTime?
+  suspensionReason         String?
+  suspended                 Boolean      @default(false)
+  failedLoginAttempts    Int       @default(0)
+  lockUntil              DateTime?
+  lockoutCount           Int       @default(0)
+  magicLinkToken        String?   @unique
+  magicLinkTokenExpires DateTime?
+  billingCountry           String?
+  billingState             String?
+  billingCity              String?
+  billingPostalCode        String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  // Relations
+  dispute Dispute[]
+  tickets Ticket[]
+  events  Event[]
+  orders  Order[]
+  checkIns TicketCheckIn[]
+  wallet  Wallet?
+  coHostedEvents          EventCoHost[]
+  deviceSessions          DeviceSession[]
+  savedEvents             SavedEvent[]
+  discountCodes           DiscountCode[]
+  pageVisits              PageVisit[]
+  eventShares             EventShare[]
+  bankAccounts            BankAccount[]
+  notificationPreference NotificationPreference?
+  campaignsAsOrganizer   Campaign[]              @relation("OrganizerCampaigns")
+  campaignsAsAdmin       Campaign[]              @relation("AdminCreatedCampaigns")
+  campaignPayments       CampaignPayment[]       @relation("OrganizerCampaignPayments")
+  adminCampaignRates     CampaignRate[]          @relation("AdminCampaignRates")
+  campaignRecipients     CampaignRecipient[]
+  eventDrafts            EventDraft[]
+  surveys                Survey[]
+  activityReads          ActivityRead[]
+  adminActionOtps        AdminActionOtp[]
+ ninAttemptLogs       NinAttemptLog[]
+
+ @@unique([pendingEmail])
+}
+
+model ActivityRead {
+  id           String       @id @default(uuid())
+  userId       String
+  activityType ActivityType
+  sourceId     String
+  readAt       DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, activityType, sourceId])
+  @@index([userId, readAt])
+}
+
+model EventCoHost {
+  id              String       @id @default(uuid())
+  eventId         String
+  email           String
+  name            String
+  userId          String?
+  permissions     CoHostRole[]
+  showOnEventPage Boolean      @default(false)
+  accepted        Boolean      @default(false)
+  token           String       @unique
+
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id])
+  user  User? @relation(fields: [userId], references: [id])
+
+  @@unique([eventId, email])
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String?  @unique
+  description String?
+  imageUrl    String
+  date        DateTime
+  startTime   DateTime?
+  endTime     DateTime?
+  location    String?
+  state       String?
+  country     String?
+  latitude    Float?
+  longitude   Float?
+
+
+  virtualProvider VirtualProvider?
+  virtualMeetingId String?
+  virtualMeetingUrl String?
+  virtualMeetingPassword String?
+  virtualSettings Json?
+
+  
+  category  EventCategory
+  eventType EventType   @default(PHYSICAL)
+  attendeeLink String?
+  qrCodeUrl    String?
+  totalTickets Int    @default(0)
+  ticketsSold  Int    @default(0)
+  status       String @default("upcoming")
+
+  organizerId String
+  organizer   User   @relation(fields: [organizerId], references: [id])
+
+  refundPolicy RefundPolicy        @default(DISALLOW)
+  visibility   EventVisibility     @default(PUBLIC)
+  transactions WalletTransaction[]
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  ticketTypes   TicketType[]
+  tickets       Ticket[]
+  orders        Order[]
+  savedBy       SavedEvent[]
+  coHosts       EventCoHost[]
+  discountCodes DiscountCode[]
+  pageViews     PageVisit[]
+  shares        EventShare[]
+  gatepass GatePass[]
+  checkIns  TicketCheckIn[]
+  campaigns Campaign[]
+  scanLogs    TicketScanLog[] 
+  eventReminders EventReminderLog[]
+  surveys                Survey[]
+
+  @@unique([organizerId, title, date])
+  @@index([state])
+  @@index([category])
+  @@index([latitude, longitude])
+  @@index([eventType])
+}
+
+model EventDraft {
+  id          String   @id @default(uuid())
+  title       String?
+  description String?
+  imageUrl    String?
+  date        DateTime?
+  startTime DateTime?
+  endTime   DateTime?
+  location    String?
+  state       String?
+  country     String?
+  latitude    Float?
+  longitude   Float?
+  category    EventCategory?
+  eventType   EventType?
+  attendeeLink String?
+  qrCodeUrl    String?
+  totalTickets Int?
+  ticketsSold  Int?
+  status       String?
+  ticketTypes  Json?
+  coHosts      Json?
+
+  organizerId String
+  organizer   User   @relation(fields: [organizerId], references: [id])
+
+  refundPolicy RefundPolicy?
+  visibility   EventVisibility?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizerId])
+}
+
+model TicketType {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  basePrice    Float  @default(0)  //what organizer set
+  price        Float               //what attendee pays - basePrice + fee
+  platformFee  Float  @default(0)  //fee per ticket
+  feeRate      Float    @default(0)    //fee rate snapshot at creation time
+  quantity     Int
+  startSelling DateTime
+  endSelling   DateTime
+  type         String
+  sold         Int      @default(0)
+  eventId      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tickets Ticket[]
+  orders  Order[]
+  orderItems OrderItem[]
+  discountCodes DiscountCode[]
+  lowStockAlerts TicketLowStockAlertLog[]
+
+  @@unique([eventId, name])
+}
+
+model Ticket {
+  id           String    @id @default(uuid())
+  eventId      String
+  ticketTypeId String?
+  userId       String?
+  orderId      String
+  ticketCode   String    @unique
+  qrCodeUrl    String?
+  quantity     Int       @default(1)
+  seatId       String?
+  isUsed       Boolean   @default(false)
+  checkedInAt  DateTime?
+  checkedInBy  String?
+
+  attendeeEmail String?
+  attendeeName String?
+
+  virtualMeetingUrl String?
+  virtualMeetingPassword String?
+  zoomRegistrantId String?
+
+  joinToken String? @unique
+  activeJoinToken String? @unique
+  activeJoinExpiry DateTime?
+
+  status TicketStatus @default(ACTIVE)
+  deletedAt DateTime?
+   
+
+  checkIns TicketCheckIn[]
+  scanLogs      TicketScanLog[]  
+  joinLogs VirtualJoinLog[]
+  createdAt DateTime @default(now())
+
+  user       User?       @relation(fields: [userId], references: [id])
+  event      Event       @relation(fields: [eventId], references: [id])
+  order      Order       @relation(fields: [orderId], references: [id])
+  ticketType TicketType? @relation(fields: [ticketTypeId], references: [id])
+
+  @@index([orderId])
+  @@index([eventId])
+  @@index([ticketCode])
+  @@index([joinToken])
+  @@index([activeJoinToken])
+  @@index([attendeeEmail])
+  @@unique([eventId, seatId]) 
+}
+
+model Order {
+  id             String  @id @default(uuid())
+  eventId        String
+  ticketTypeId   String
+  userId         String?
+  name           String?
+  email          String
+  amount         Float 
+  subtotal       Float @default(0)  // amount to recieve after gateway charges
+  paystackFee     Float? @default(0) // gateway fee
+  klumpFee       Float? @default(0)
+  totalAmount     Float  @default(0) // amount include gateway charges
+  buyerState     String? 
+  phoneNumber    String?
+  seatIds        String[]
+  originalAmount Float   @default(0)
+  platformFee Float @default(0)
+  netAmount  Float @default(0)
+  platformFlatFee Float @default(0)
+
+  quantity       Int
+  status         String  @default("pending")
+  reference      String? @unique
+
+  discountCodeId String?
+  discountAmount Float?  @default(0)
+
+  attendeesMeta Json?
+
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  expiresAt DateTime @default(dbgenerated("(NOW() + INTERVAL '10 MINUTE')"))
+  transaction WalletTransaction[]
+  paidAt DateTime?
+  failureReason String?
+
+  event        Event         @relation(fields: [eventId], references: [id])
+  user         User?         @relation(fields: [userId], references: [id])
+  ticketType   TicketType    @relation(fields: [ticketTypeId], references: [id])
+  items        OrderItem[]
+  tickets      Ticket[]
+  KlumpPayment KlumpPayment?
+  payments     Payment[]
+  paystackPayments PaystackPayment?
+  discountCode DiscountCode? @relation(fields: [discountCodeId], references: [id])
+  FeeBreakdown FeeBreakdown?
+  eventReminders EventReminderLog[]
+  surveys                Survey[]
+
+  @@index([eventId])
+  @@index([ticketTypeId])
+  @@index([userId])
+  @@index([discountCodeId])
+  @@index([expiresAt])
+  @@index([phoneNumber])
+}
+
+// A single ticket-type line within an order. An order may contain multiple items
+// (different ticket types) but all items must belong to the same event.
+// The parent Order keeps summary totals (amount, quantity) and, for backward-compat,
+// Order.ticketTypeId points at the first item's ticket type.
+model OrderItem {
+  id           String   @id @default(uuid())
+  orderId      String
+  ticketTypeId String
+  quantity     Int
+  basePrice    Float    @default(0) // organizer base price per ticket (snapshot)
+  unitPrice    Float    @default(0) // attendee price per ticket incl. platform fee (snapshot)
+  platformFee  Float    @default(0) // platform fee for this line (per-ticket fee * quantity)
+  subtotal     Float    @default(0) // unitPrice * quantity (before discount/flat fee)
+  seatIds      String[]
+  createdAt    DateTime @default(now())
+
+  order      Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
+
+  @@index([orderId])
+  @@index([ticketTypeId])
+}
+
+model VirtualJoinLog {
+  id String @id @default(uuid())
+  ticketId String
+  userId String?
+  ipAddress String?
+  userAgent String?
+  joinedAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+
+  @@index([ticketId])
+  @@index([joinedAt])
+}
+ 
+model DiscountCode {
+  id          String  @id @default(uuid())
+  code        String
+  organizerId String
+  eventId     String?
+  ticketTypeId    String?
+
+  discountType DiscountType
+  value        Float
+
+  maxUses     Int?
+  currentUses Int  @default(0)
+
+  startDate DateTime?
+  endDate   DateTime?
+  isActive  Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organizer User   @relation(fields: [organizerId], references: [id])
+  event     Event? @relation(fields: [eventId], references: [id])
+  ticketType TicketType? @relation(fields: [ticketTypeId], references: [id])
+
+  orders Order[]
+
+  @@unique([code, organizerId])
+  @@index([organizerId])
+  @@index([eventId])
+  @@index([isActive])
+  @@index([endDate])
+}
+
+model GatePass {
+  id           String  @id @default(uuid())
+  eventId      String
+  email        String
+  userId String?
+  token        String  @unique
+  tokenExpiry DateTime?
+  isUsed       Boolean @default(false)
+  assignedName String?
+  isActive     Boolean @default(true)
+  status    GateStaffStatus @default(PENDING)
+  createdBy    String
+  checkIns TicketCheckIn[]
+
+  // Bumped every time the invite token is (re)issued or access is revoked. Gate staff JWTs
+  // carry the epoch they were minted under, so a revoke - or a re-invite of the same email -
+  // invalidates every session token already in the wild without a token denylist.
+  sessionEpoch Int @default(0)
+
+  invitedBy   String?
+  invitedAt   DateTime?
+  acceptedAt  DateTime?
+
+  createdAt DateTime @default(now())
+
+  event  Event  @relation(fields: [eventId], references: [id])
+  scanLogs     TicketScanLog[] 
+
+
+ @@unique([eventId, email])
+  @@index([userId])
+  @@index([status])
+  @@index([eventId])
+  @@index([token])
+}
+
+
+model TicketScanLog {
+  id          String   @id @default(uuid())
+  ticketId    String?
+  ticketCode  String
+  // Null when an organizer scans directly with their own JWT rather than through a gate pass.
+  // This used to be required, so organizer scans wrote a User id into a GatePass foreign key
+  // and every one of those log inserts failed the constraint (silently - logTicketScan swallows).
+  gatePassId  String?
+  scannedByUserId String?
+  eventId     String
+  location    String?
+  scannedAt   DateTime @default(now())
+  scanResult  String
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?
+
+  ticket      Ticket?     @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  // SetNull, not Cascade: removing a staff member must not erase the record of who they
+  // admitted. The log keeps ticketCode, eventId and scannedAt, so the event's check-in history
+  // survives the staffer being deleted.
+  gatePass    GatePass?   @relation(fields: [gatePassId], references: [id], onDelete: SetNull)
+  event       Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+
+  @@index([ticketId])
+  @@index([gatePassId])
+  @@index([scannedByUserId])
+  @@index([eventId, scannedAt])
+  @@index([scanResult])
+  @@index([ticketCode])
+}
+
+model TicketCheckIn {
+  id          String   @id @default(uuid())
+  ticketId    String
+  gatePassId String
+   userId     String? 
+  eventId     String
+  
+  checkedInAt DateTime @default(now())
+  location    String?  
+  notes       String?
+  
+  ticket    Ticket     @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  gatepass GatePass  @relation(fields: [gatePassId], references: [id], onDelete: Cascade)
+  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+   user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId])
+  @@index([gatePassId])
+  @@index([eventId])
+  @@index([userId])
+  @@index([checkedInAt])
+}
+
+model Payment {
+  id        String    @id @default(uuid())
+  orderId   String
+  provider  String
+  reference String    @unique
+  amount    Float
+  status    String    @default("pending")
+  paidAt    DateTime?
+  metadata  Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([status])
+}
+
+model PaystackPayment {
+  id            String   @id @default(uuid())
+  reference     String   @unique
+  amount        Int
+  currency      String
+  email         String
+  status        String   @default("pending")
+  orderId       String? @unique
+  eventId       String?
+  ticketTypeId  String?
+  quantity      Int
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  order Order? @relation(fields: [orderId], references: [id])
+}
+
+/// Step-up confirmation for sensitive admin actions.
+///
+/// Some admin operations move money (crediting an organizer's wallet), so a valid session
+/// alone is not enough — a stolen or unattended admin session could drain the platform. The
+/// admin requests a one-time code, it is emailed to the address on their own account, and the
+/// action only executes once that code comes back.
+///
+/// `payloadHash` binds the code to the EXACT request it was issued for: a code approved for a
+/// ₦1,000 credit cannot be replayed against a ₦1,000,000 one. Only hashes are stored, so a
+/// database read never yields a usable code.
+model AdminActionOtp {
+  id      String @id @default(uuid())
+  adminId String
+
+  /// Which operation this code authorises, e.g. 'BALANCE_ADJUST'.
+  action String
+
+  /// SHA-256 over the canonical request parameters.
+  payloadHash String
+  /// SHA-256 of the code itself — never the plaintext.
+  codeHash String
+
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  admin User @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId, action])
+  @@index([expiresAt])
+}
+
+/// Durable inbox for inbound payment-provider webhooks.
+///
+/// The webhook handler writes the raw event here BEFORE doing any fulfilment work, then
+/// acknowledges the provider. Fulfilment happens afterwards (inline, then via a retrying
+/// pg-boss job, then via the reconciliation cron) and flips `status` to `processed`.
+/// Because the provider's own event id is unique, a replayed webhook is recognised instead
+/// of being processed twice - and an event that fails every retry stays visible as a row
+/// instead of disappearing into a swallowed 200 response.
+model WebhookEvent {
+  id       String @id @default(uuid())
+  provider String // 'paystack'
+
+  /// Provider event id (Paystack `data.id`), falling back to the transaction reference.
+  eventId   String
+  eventType String // 'charge.success', ...
+  reference String?
+
+  payload Json
+
+  /// pending | processing | processed | failed | ignored
+  status      String    @default("pending")
+  attempts    Int       @default(0)
+  lastError   String?
+  processedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, eventId])
+  @@index([status, createdAt])
+  @@index([reference])
+}
+
+
+// Transaction dispute raised by organizer
+model Dispute {
+  id            String        @id @default(uuid())
+  transactionId String        
+  userId        String       
+  reason        String
+  description   String
+  status        DisputeStatus @default(OPEN)
+  resolution    String?       // Admin notes on how it was resolved
+  resolvedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transaction WalletTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model DeviceSession {
+  id           String    @id @default(cuid())
+  userId       String
+  deviceName   String
+  deviceType   String
+  userAgent    String
+  ipAddress    String
+  location     String?
+  city         String?
+  country      String?
+  countryCode  String?
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+  lastActiveAt DateTime  @default(now())
+  revokedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, revokedAt])
+}
+
+model Wallet {
+  id           String              @id @default(uuid())
+  userId       String              @unique
+  balance      Float               @default(0)
+  transactions WalletTransaction[]
+  withdrawals  WithdrawalRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model WalletTransaction {
+  id          String            @id @default(uuid())
+  walletId    String
+  eventId     String?
+  orderId String?
+  
+  amount      Float 
+  grossAmount Float  
+  platformFee Float? 
+
+  description String
+  type        TransactionType
+  status      TransactionStatus @default(PENDING)
+  reference   String?           @unique
+
+  wallet  Wallet   @relation(fields: [walletId], references: [id])
+  event   Event?   @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  order   Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  dispute Dispute[]
+
+  createdAt DateTime @default(now())
+
+  @@index([walletId])
+  @@index([eventId])
+  @@index([orderId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model WithdrawalRequest {
+  id       String @id @default(uuid())
+  walletId String
+  amount   Float
+
+  bankName      String
+  accountName   String
+  accountNumber String
+
+  status WithdrawalStatus @default(PENDING)
+
+  verificationCode        String?
+  verificationCodeExpires DateTime?
+
+  processedAt   DateTime?
+  failureReason String?
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([walletId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model TicketLowStockAlertLog {
+  id           String   @id @default(uuid())
+  ticketTypeId String
+  sentAt       DateTime @default(now())
+
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([ticketTypeId])
+  @@index([sentAt])
+}
+
+model EventReminderLog {
+  id        String            @id @default(uuid())
+  eventId   String
+  orderId   String
+  type      EventReminderType
+  sentAt    DateTime          @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, orderId, type])
+  @@index([eventId])
+  @@index([orderId])
+  @@index([type])
+  @@index([sentAt])
+}
+
+model KlumpPayment {
+  id           String  @id @default(uuid())
+  reference    String  @unique
+  amount       Float
+  currency     String  @default("NGN")
+  email        String
+  name         String
+  phone        String?
+  orderId      String? @unique
+  eventId      String?
+  ticketTypeId String
+  quantity     Int     @default(1)
+  ticketId     String?
+  status       String  @default("pending")
+  paymentUrl   String?
+  metadata     Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  order Order? @relation(fields: [orderId], references: [id])
+
+  @@index([reference])
+  @@index([email])
+  @@index([orderId])
+  @@index([status])
+  @@index([eventId])
+}
+
+model PlatformConfig  {
+
+  id String @id @default(uuid())
+  platformFeePercentage  Float @default(3.5)
+  platformFeeFlat Float?
+  minPlatformFee    Float?  @default(50) 
+  maxPlatformFee    Float? 
+  isActive Boolean @default(true)
+  effectiveFrom DateTime @default(now())  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([isActive, effectiveFrom])            
+}
+
+model FeeBreakdown {
+  id String @id @default(uuid())
+  orderId String @unique
+
+  grossAmount Float 
+  platformFee Float
+  netAmount Float
+
+  platformFeeType String
+  platformFeeRate Float 
+
+  createdAt DateTime @default(now())
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+
+}
+
+model IdempotencyRecord {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  response  Json
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+model WebhookEventLog {
+  id          String   @id @default(uuid())
+  hash        String   @unique
+  payload     Json
+  response    Json?
+  processedAt DateTime @default(now())
+
+  @@index([processedAt])
+}
+
+model SavedEvent {
+  id      String @id @default(uuid())
+  userId  String
+  eventId String
+
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
+  @@index([userId])
+}
+
+model PageVisit {
+  id          String   @id @default(uuid())
+  eventId     String
+  organizerId String
+  sessionId   String
+  ipAddress   String?
+  userAgent   String?
+  referrer    String?
+  createdAt   DateTime @default(now())
+
+  organizer User  @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  event     Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, sessionId])
+  @@index([organizerId])
+  @@index([eventId])
+  @@index([sessionId])
+  @@index([createdAt])
+  @@index([organizerId, createdAt])
+  @@index([eventId, createdAt])
+}
+
+model EventShare {
+  id          String        @id @default(uuid())
+  organizerId String
+  eventId     String
+  platform    SharePlatform
+  sessionId   String?
+  ipAddress   String?
+
+  createdAt DateTime @default(now())
+
+  organizer User  @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  event     Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([organizerId])
+  @@index([eventId])
+  @@index([platform])
+  @@index([createdAt])
+  @@index([organizerId, createdAt])
+  @@index([eventId, platform])
+}
+
+model BankAccount {
+  id            String   @id @default(uuid())
+  userId        String
+  bankName      String
+  bankCode      String 
+  accountNumber String
+  accountName   String   
+  isVerified    Boolean  @default(false)
+  isPrimary     Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt 
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, accountNumber])
+  @@index([userId])
+}
+
+model NotificationPreference {
+  id     String @id @default(uuid())
+  userId String @unique
+
+  // Attendee
+  emailNotifications Boolean @default(true)
+  eventReminders     Boolean @default(true)
+  marketingEmails    Boolean @default(true)
+  marketingSms       Boolean @default(true)
+  marketingWhatsapp  Boolean @default(true)
+
+  // Organizer
+  newTicketPurchase   Boolean @default(true)
+  payoutNotifications Boolean @default(true)
+  marketingInsights   Boolean @default(true)
+  refundRequests      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model CampaignRate {
+  id           String  @id @default(uuid())
+  smsRate      Decimal
+  whatsappRate Decimal
+  emailRate    Decimal
+  isActive     Boolean @default(true)
+  setByAdminId String
+
+  createdAt DateTime @default(now())
+
+  setByAdmin User @relation("AdminCampaignRates", fields: [setByAdminId], references: [id])
+
+  @@index([isActive])
+}
+
+model Campaign {
+  id          String            @id @default(uuid())
+  organizerId String
+  eventId     String?
+  title       String
+  message     String
+  imageUrl   String?
+  channels    CampaignChannel[]
+  status      CampaignStatus    @default(AWAITING_PAYMENT)
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  cancelledAt DateTime?
+  rejectedAt  DateTime?
+  rejectionReason String?
+  smsRecipientCount      Int @default(0)
+  whatsappRecipientCount Int @default(0)
+  emailRecipientCount    Int @default(0)
+  totalRecipients Int @default(0)
+  createdByAdminId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  organizer      User                @relation("OrganizerCampaigns", fields: [organizerId], references: [id])
+  event          Event?              @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  createdByAdmin User?               @relation("AdminCreatedCampaigns", fields: [createdByAdminId], references: [id])
+  payment        CampaignPayment?
+  recipients     CampaignRecipient[]
+
+  @@index([organizerId])
+  @@index([status])
+  @@index([eventId])
+}
+
+model CampaignPayment {
+  id             String                @id @default(uuid())
+  campaignId     String                @unique
+  organizerId    String
+  amount         Decimal
+  paymentMethod  CampaignPaymentMethod
+  klumpReference String?
+  paystackReference String?
+  status         CampaignPaymentStatus @default(PENDING)
+
+  rateSnapshot           Json
+  smsRecipientCount      Int @default(0)
+  whatsappRecipientCount Int @default(0)
+  emailRecipientCount    Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  organizer User     @relation("OrganizerCampaignPayments", fields: [organizerId], references: [id])
+
+  @@index([organizerId])
+  @@index([status])
+}
+
+model CampaignRecipient {
+  id          String  @id @default(uuid())
+  campaignId  String
+  userId      String
+  email       String?
+  phoneNumber String?
+
+  smsStatus      DeliveryStatus @default(SKIPPED)
+  smsError       String?
+  whatsappStatus DeliveryStatus @default(SKIPPED)
+  whatsappError  String?
+  emailStatus    DeliveryStatus @default(SKIPPED)
+  emailError     String?
+
+  createdAt DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@unique([campaignId, userId])
+  @@index([campaignId])
+  @@index([userId])
+}
+
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
+model Survey {
+  id String @id @default(uuid())
+  userId String?
+  eventId String?
+  orderId String?
+  overallExperience Int?
+  easeOfBooking Int?
+  paymentProcess Int?
+  eventOrganization Int?
+  wouldRecommend Boolean?
+  feedback String?
+  improvements String?
+  favoriteFeature String?
+  submittedAt DateTime  @default(now())
+  ipAddress String?
+  userAgent String?
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  event Event? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([submittedAt])
+}
+
+model NinAttemptLog {
+  id        String   @id @default(uuid())
+  ninHash   String
+  userId    String
+  success   Boolean
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([ninHash])
+  @@index([userId])
+  @@index([createdAt])
+}

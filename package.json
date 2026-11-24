@@ -1,0 +1,16 @@
+{
+  "name": "shanks-tix",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev:web": "npm run dev -w @shankstix/web",
+    "dev:admin": "npm run dev -w @shankstix/admin",
+    "dev:api": "npm run dev -w @shankstix/api",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "db:generate": "npm run generate -w @shankstix/db",
+    "db:studio": "npm run studio -w @shankstix/db"
+  },
+  "engines": { "node": ">=22" }
+}
