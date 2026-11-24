@@ -444,6 +444,8 @@ model TicketType {
   lowStockAlerts TicketLowStockAlertLog[]
 
   @@unique([eventId, name])
+
+  @@index([deletedAt])
 }
 
 model Ticket {
@@ -492,6 +494,8 @@ model Ticket {
   @@index([activeJoinToken])
   @@index([attendeeEmail])
   @@unique([eventId, seatId]) 
+
+  @@index([deletedAt])
 }
 
 model Order {

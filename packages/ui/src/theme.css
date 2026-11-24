@@ -1,0 +1,43 @@
+/*
+ * ShanksTix design tokens. Imported by apps/web and apps/admin after `@import "tailwindcss"`.
+ * Brand: black wordmark, red "Tix." (#E60509), Figtree type.
+ */
+@theme {
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand-50: #fff1f1;
+  --color-brand-100: #ffe0e0;
+  --color-brand-200: #ffc5c6;
+  --color-brand-300: #ff9b9c;
+  --color-brand-400: #ff5f61;
+  --color-brand-500: #f82a2d;
+  --color-brand-600: #e60509;
+  --color-brand-700: #c10306;
+  --color-brand-800: #9f070a;
+  --color-brand-900: #840d10;
+  --color-brand-950: #480103;
+
+  --color-ink: #141414;
+  --color-ink-soft: #3d3d3d;
+  --color-muted: #6b6b6b;
+  --color-line: #e7e7e7;
+  --color-surface: #ffffff;
+  --color-canvas: #f7f7f5;
+
+  --radius-card: 1.25rem;
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    background: var(--color-surface);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+  ::selection {
+    background: var(--color-brand-600);
+    color: white;
+  }
+}
